@@ -3,9 +3,9 @@ from corner import *
 from edge import *
 from button import *
 import random
-import pygame
 from math import sqrt
 from optionbutton import *
+from player import Player
 
 color = {
     -1: (255, 255, 255),
@@ -129,104 +129,123 @@ self._corners_corners_map - dict with assigned corners neighbours
 
 
 class Board:
-    def __init__(self, players_am, screen_w=1200, screen_h=720, corners_ports=corners_ports, fields_map=corners_fields, corners_map=corners_corners, spots=spots):
+    def __init__(self, players_am, ai, screen_w=1200, screen_h=720, corners_ports=corners_ports, fields_map=corners_fields, corners_map=corners_corners, spots=spots):
         self.screen_w = screen_w
         self.screen_h = screen_h
-        self.screen = pygame.display.set_mode((screen_w, screen_h))
+        self.ai = ai
+        self.pos_start_x = 100
+        self.pos_start_y = 100
+        self.dice = [0, 0]
         self.spots = spots
-        self.turn = -1
         self.fields = []
         self.corners = []
         self.edges = {}
+        self.players = []
+        self.init = True
         self.buildings_spots = {}
         self.fields_corners_map = fields_map
         self.corners_corners_map = corners_map
         self.corners_ports = corners_ports
         self.message = "what do you want to do?"
-        self.pos_start_x = 100
-        self.pos_start_y = 100
-        self.edge_length = (5/6 * self.screen_h) / 10
-        self.last_click = None
-        self.main_panel_x = self.pos_start_x + 12*self.edge_length*sqrt(3)/2
-        self.change_buttons = []
-        self.option_button = OptionButton((self.main_panel_x + (self.screen_w - self.main_panel_x)/2 - 100, 100), 200, 50, (124,134,123))
-        self.end_button = Button((self.screen_w - 400, self.screen_h - 150), 150, 50, (124,134,123), "end ture", "end")
+        self.edge_length = (5 / 6 * self.screen_h) / 10
+        self.main_panel_x = self.pos_start_x + 12 * self.edge_length * sqrt(3) / 2
         # self.trade_buttons = OptionButton((self.screen_w - 400, self.screen_h - 250), 100, 40, "trade", "trade")
         self.init_players(players_am)
         self.init_fields()
         self.init_corners()
         self.init_edges()
+        self.history = []
+        self.current_player = self.players[0]
+        self.moves_in_current_turn = {"village": [], "town": [], "road": [], "development card": []}
+        self.last_move = 0
+        self.history = []
 
-    def init_change_buttons(self, current_player):
-        dist_between_buttons = (self.screen_w - self.main_panel_x) / 5
-        button_w = dist_between_buttons - 20
-        for i, prod in enumerate(current_player.possible_trades):
-            text = "change\n" + str(current_player.possible_trades[prod]) + ":1"
-            self.change_buttons.append(Button((self.main_panel_x + dist_between_buttons*i + 10, 350), button_w, 50, (145, 122, 101), text, prod))
 
-    def display_ports(self):
-        for ports_c in self.corners_ports:
-            self.display_port(ports_c, self.corners_ports[ports_c])
+    def roll(self):
+        self.dice[0] = random.randint(1, 6)
+        self.dice[1] = random.randint(1, 6)
 
-    def display_change_panel(self):
-        for button in self.change_buttons:
-            filename = "Graphic//" + button.destination + "_icon.png"
-            img = pygame.image.load(filename)
-            img = pygame.transform.scale(img, (int(button.width), int(button.width)))
-            self.screen.blit(img, (button.pos[0], button.pos[1] - button.width - 5))
-            button.display(self.screen)
+        if sum(self.dice) == 7:
+            self.take_away_products()
+        self.set_message("what do you want to do?")
 
-    def display_port(self, c_t, type):
-        corner1 = self.corners[c_t[0]]
-        corner2 = self.corners[c_t[1]]
-        pos_x = corner1.pos_x
-        pos_y = corner2.pos_y
-        rotation = 0
-        if corner1.pos_x < corner2.pos_x and corner1.pos_y < corner2.pos_y:
-            pos_x = corner1.pos_x + 5
-            pos_y = corner2.pos_y - 70
-            rotation = -30
+    def init_distribute_resources(self):
+        for player in self.players:
+            for village in self.buildings_spots[player.color]["village"]:
+                for field in self.fields:
+                    if village in self.fields_corners_map[field.tag]:
+                        player.gain(field.type, 1)
 
-        if corner1.pos_x > corner2.pos_x and corner1.pos_y > corner2.pos_y:
-            pos_x = corner1.pos_x - 72
-            pos_y = corner2.pos_y + 4
-            rotation = 150
+    def change_current_player(self, current_player):
+        self.current_player = current_player
 
-        if corner1.pos_x > corner2.pos_x and corner1.pos_y < corner2.pos_y:
-            pos_x = corner2.pos_x - 20
-            pos_y = corner1.pos_y - 42
-            rotation = 30
+    def distribute_resources(self, result):
+        fields_to_distribute = []
+        for field in self.fields:
+            if len(fields_to_distribute) >= 2:
+                break
+            if field.number == result:
+                fields_to_distribute.append(field)
+        for player in self.players:
+            for village_numb in self.buildings_spots[player.color]["village"]:
+                for field in fields_to_distribute:
+                    if village_numb in self.fields_corners_map[field.tag]:
+                        player.gain(field.type, 1)
+            for town_numb in self.buildings_spots[player.color]["town"]:
+                for field in fields_to_distribute:
+                    if town_numb in self.fields_corners_map[field.tag]:
+                        player.gain(field.type, 2)
 
-        if corner1.pos_x < corner2.pos_x and corner1.pos_y > corner2.pos_y:
-            pos_x = corner1.pos_x - 72
-            pos_y = corner2.pos_y + 4
-            rotation = 30
+    def take_away_products(self):
+        for player in self.players:
+            if player.cards_total > 7:
+                if player.development_cards["knight"] <= 0:
+                    taken = 0
+                    while taken < player.cards_total // 2:
+                        prod = random.choice(list(player.products.keys()))
+                        if player.products[prod] > 0:
+                            player.products[prod] -= 1
+                            taken += 1
+                else:
+                    player.development_cards["knight"] -= 1
 
-        if corner1.pos_x < corner2.pos_x and corner1.pos_y > corner2.pos_y:
-            pos_x = corner1.pos_x + 5
-            pos_y = corner2.pos_y + 2
-            rotation = -150
+    def next_player(self):
+        if self.init is False:
+            if self.current_player.color == self.players[-1].color:
+                self.current_player = self.players[0]
+            else:
+                self.current_player = self.players[self.current_player.color + 1]
+            self.moves_in_current_turn = {"village": [], "town": [], "road": [], "development card": []}
+        else:
+            built_roads = [p.built["road"] for p in self.players]
+            if set(built_roads) == {2}:
+                self.init = False
+                self.board.init_distribute_resources()
+                self.current_player = self.players[0]
+            elif self.current_player.color == self.players[-1].color and self.current_player.built["road"] == 1:
+                self.current_player = self.players[-1]
+            elif 0 in built_roads:
+                self.current_player = self.players[self.current_player.color + 1]
+            elif 0 not in built_roads:
+                self.current_player = self.players[self.current_player.color - 1]
 
-        if corner1.pos_x == corner2.pos_x:
-            if corner1.pos_y > corner2.pos_y:
-                pos_x = corner1.pos_x + 2
-                pos_y = corner2.pos_y + 5
-                rotation = -90
+            self.moves_in_current_turn = {"village": [], "town": [], "road": [], "development card": []}
 
-            if corner1.pos_y < corner2.pos_y:
-                pos_x = corner1.pos_x - 50
-                pos_y = corner2.pos_y - 52
-                rotation = 90
-
-        filename = "Graphic//port_" + type + ".png"
-        img = pygame.image.load(filename)
-        img = pygame.transform.scale(img, (50, 50))
-        img = pygame.transform.rotate(img, rotation)
-        self.screen.blit(img, (pos_x, pos_y))
+    def return_next_state(self, move):
+        pass
 
     def init_players(self, players_am):
-        for i in range(players_am):
-            self.buildings_spots[i] = {"town": [], "village": [], "road": []}
+        if self.ai is False:
+            for i in range(players_am):
+                self.buildings_spots[i] = {"town": [], "village": [], "road": []}
+                self.players.append(Player(i))
+        if self.ai is True:
+            for i in range(players_am):
+                self.buildings_spots[i] = {"town": [], "village": [], "road": []}
+                if i == -1:
+                    self.players.append(Player(i))
+                else:
+                    self.players.append(Player(i, True))
 
     def init_fields(self):
         for i in range(19):
@@ -310,141 +329,53 @@ class Board:
             corners += self.fields_corners_map[field]
         return corners
 
-    def display_corners(self):
-        for corner in self.corners:
-            corner.display(self.screen)
+    def set_message(self, msg):
+        self.message = msg
 
-    def display_edges(self):
-        for edge in self.edges:
-            self.edges[edge].display(self.screen)
+    def is_end(self):
+        players_score = {}
+        for player in self.players:
+            players_score[player.color] = player.score
+            if player.score >= 7:
+                return player.color
+        return False
 
-    def display_fields(self):
-        for field in self.fields:
-            p = []
-            corners = self.fields_corners_map[field.tag]
-            for i in corners:
-                p.append((self.corners[i].pos_x, self.corners[i].pos_y))
-            field.display(self.screen, (p[0], p[1], p[2], p[3], p[4], p[5]))
+    def state_json(self):
+        if self.last_move == 0:
+            last = 0
+        else:
+            last = self.last_move[0]
+            if last == "road":
+                last = self.last_move[1].corners
+            elif last == "town" or last == "village":
+                last = self.last_move[1].numb
+            elif last == "change":
+                last = self.last_move[1]
+        json = {
+            "current_player": self.current_player.color,
+            "building_spots": self.buildings_spots,
+            "players": {},
+            # "dice": self.dice,
+            "init": self.init,
+            "current_turn": self.moves_in_current_turn,
+            "last_move": last
+        }
+        for player in self.players:
+            json["players"][player.color] = {"av_buildings": player.available_buildings,
+                                             "built": player.built,
+                                             # "products": player.products,
+                                             "possible_trades": player.possible_trades,
+                                             # "development_cards": sum(player.development_cards[i] for i in player.development_cards),
+                                             # "score": player.score,
+                                             "cards_total": player.cards_total,
+                                             "ai": player.ai}
+        return json
 
-    def display_village(self, position, color):
-        filename = "Graphic//village_" + image_name[color] + ".png"
-        img = pygame.image.load(filename)
-        img = pygame.transform.scale(img, (50, 50))
-        self.screen.blit(img, (position[0]-25, position[1]-25))
+    def __eq__(self, other):
+        if not isinstance(other, Board):
+            return NotImplemented
+        return self.state_json() == other.state_json()
 
-    def display_town(self, position, color):
-        filename = "Graphic//town_" + image_name[color] + ".png"
-        img = pygame.image.load(filename)
-        img = pygame.transform.scale(img, (50, 50))
-        self.screen.blit(img, (position[0]-25, position[1]-25))
-
-    def display_road(self, position, color):
-        pygame.draw.rect(self.screen, color, pygame.Rect(position, (30, 5)))
-
-    def display_buildings(self):
-        for player in self.buildings_spots:
-            for building_type in self.buildings_spots[player]:
-                for corner in self.buildings_spots[player][building_type]:
-                    if building_type != "road":
-                        pos = (self.corners[corner].pos_x, self.corners[corner].pos_y)
-                        if building_type == "village":
-                            self.display_village(pos, player)
-                        if building_type == "town":
-                            self.display_town(pos, player)
-
-    def display_bottom_panel(self, player):
-        pygame.draw.line(self.screen, color[player.color], (0, self.screen_h - 20), (self.screen_w, self.screen_h - 20), 40)
-        pygame.draw.line(self.screen, (138, 115, 73), (0, self.screen_h-42), (self.screen_w, self.screen_h - 42), 4)
-        pos_x = 5
-        for name in types_names:
-            filename = "Graphic//" + name + "_icon.png"
-            img = pygame.image.load(filename)
-            img = pygame.transform.scale(img, (30, 30))
-            text = pygame.font.SysFont(None, 40)
-            numb = text.render(str(player.products[name]), True, (0, 0, 0))
-            self.screen.blit(img, (pos_x, self.screen_h - 35))
-            self.screen.blit(numb, (pos_x + 40, self.screen_h - 35))
-            pos_x += 100
-        for i, name in enumerate(dev_cards_names):
-            filename = "Graphic//" + name + "_icon.png"
-            img = pygame.image.load(filename)
-            img = pygame.transform.scale(img, (30, 30))
-            text = pygame.font.SysFont(None, 40)
-            numb = text.render(str(player.development_cards[name]), True, (0, 0, 0))
-            self.screen.blit(img, (self.screen_w - 80 - i * 100, self.screen_h - 35))
-            self.screen.blit(numb, (self.screen_w - 40 - i * 100, self.screen_h - 35))
-
-
-    def display_main_panel(self, player, clicked, dice_1, dice_2, init=False):
-        x_pos_start = self.main_panel_x
-        pygame.draw.rect(self.screen, (209, 176, 115), (x_pos_start, 0, self.screen_w, self.screen_h-39))
-        pygame.draw.line(self.screen, (138, 115, 73), (x_pos_start, 0), (x_pos_start, self.screen_h), 4)
-        dice1_file = "Graphic//dice_" + str(dice_1) + ".png"
-        dice2_file = "Graphic//dice_" + str(dice_2) + ".png"
-        dice1 = pygame.image.load(dice1_file)
-        dice2 = pygame.image.load(dice2_file)
-        if init is False:
-            self.screen.blit(dice1, (x_pos_start + 25, 25))
-            self.screen.blit(dice2, (x_pos_start + 80, 25))
-            self.display_change_panel()
-        self.display_message()
-        self.option_button.display(self.screen, init)
-        self.end_button.display(self.screen)
-
-
-    def display_message(self):
-        x_pos_start = self.pos_start_x + 12 * self.edge_length * sqrt(3) / 2
-        text = pygame.font.SysFont(None, 34)
-        text = text.render(self.message, True, (0, 0, 0))
-        self.blit_text(self.message, (x_pos_start + 135, 15))
-
-    def blit_text(self, text, pos_start):
-        words = [word.split(' ') for word in text.splitlines()]  # 2D array where each row is a list of words.
-        font = pygame.font.SysFont(None, 35)
-        space = font.size(' ')[0]  # The width of a space.
-        max_width = self.screen_w - 10
-        max_height = pos_start[1]
-
-        x, y = pos_start
-        for line in words:
-            for word in line:
-                word_surface = font.render(word, 0, (0, 0, 0))
-                word_width, word_height = word_surface.get_size()
-                if x + word_width >= max_width:
-                    x = pos_start[0]  # Reset the x.
-                    y += word_height  # Start on new row.
-                self.screen.blit(word_surface, (x, y))
-                x += word_width + space
-            x = pos_start[0]  # Reset the x.
-            y += word_height  # Start on new row.
-
-    def display(self, current_player, clicked, dice_result_1, dice_result_2, init=False):
-        self.screen.fill((176, 224, 230))
-        self.display_fields()
-        self.display_edges()
-        self.display_corners()
-        self.display_ports()
-        self.display_main_panel(current_player, clicked,
-                                      dice_result_1, dice_result_2, init)
-        self.display_bottom_panel(current_player)
-
-    def display_end(self, current_player, winner):
-        self.screen.fill((176, 224, 230))
-        self.display_fields()
-        self.display_edges()
-        self.display_corners()
-        self.display_ports()
-
-        x_pos_start = self.main_panel_x
-        pygame.draw.rect(self.screen, (209, 176, 115), (x_pos_start, 0, self.screen_w, self.screen_h-39))
-        pygame.draw.line(self.screen, (138, 115, 73), (x_pos_start, 0), (x_pos_start, self.screen_h), 4)
-        self.display_bottom_panel(current_player)
-
-        msg = "YOU WON" if winner == current_player.color else "PLAYER " + current_player.color + " WON"
-        font = pygame.font.SysFont(None, 70)
-        text = font.render(msg, True, (255, 255, 255))
-        self.screen.blit(text, ((self.screen_w - self.main_panel_x)/2 - text.get_rect().width/2, 250))
-
-
-
+    def __hash__(self):
+        return hash(frozenset(self.state_json()))
 

@@ -58,8 +58,6 @@ class Corner:
     def is_inside(self, pos):
         dist = sqrt((self.pos_x - pos[0])**2 + (self.pos_y - pos[1])**2)
         if dist < self.corner_size/2:
-            # print(f" CORNER - dist = {dist}, center_x = {center_x}, center_y = {center_y}, corner_size = {self.corner_size},"
-            #       f" self.pos_x = {self.pos_x}, self.pos_y = {self.pos_y}, pos = {pos}")
             return True
         else:
             return False

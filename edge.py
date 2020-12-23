@@ -38,66 +38,59 @@ class Edge:
         #           //
         #         //
         #     pos_1
-        if self.pos_1[0] < self.pos_2[0] and self.pos_1[1] > self.pos_2[1]:
-            self.pos_type = 0
-            p01 = (self.pos_1[0] + l*sqrt(3)/2, self.pos_1[1] - l/2)
-            p02 = (self.pos_2[0] - l*sqrt(3)/2, self.pos_2[1] + l/2)
-            self.display_pos.append((p01[0] - a/2, p01[1] - a*sqrt(3)/2))
-            self.display_pos.append((p01[0] + a/2, p01[1] + a*sqrt(3)/2))
-            self.display_pos.append((p02[0] + a / 2, p02[1] + a * sqrt(3) / 2))
-            self.display_pos.append((p02[0] - a / 2, p02[1] - a * sqrt(3) / 2))
-            pygame.draw.polygon(screen, c, (self.display_pos[0], self.display_pos[1], self.display_pos[2], self.display_pos[3]))
-
-        # pos_1
-        #   \\
-        #     \\
-        #       \\
-        #         \\
-        #           pos_2
-        elif self.pos_1[0] < self.pos_2[0] and self.pos_1[1] < self.pos_2[1]:
-            self.pos_type = 1
-            p01 = (self.pos_1[0] + l*sqrt(3)/2, self.pos_1[1] + l/2)
-            p02 = (self.pos_2[0] - l*sqrt(3)/2, self.pos_2[1] - l/2)
-            self.display_pos.append((p01[0] + a/2, p01[1] - a*sqrt(3)/2))
-            self.display_pos.append((p01[0] - a/2, p01[1] + a*sqrt(3)/2))
-            self.display_pos.append((p02[0] - a / 2, p02[1] + a * sqrt(3) / 2))
-            self.display_pos.append((p02[0] + a / 2, p02[1] - a * sqrt(3) / 2))
-            pygame.draw.polygon(screen, c, (self.display_pos[0], self.display_pos[1], self.display_pos[2], self.display_pos[3]))
-
-        #      pos_1
-        #       ||
-        #       ||
-        #       ||
-        #       ||
-        #      pos_2
-        elif self.pos_1[0] == self.pos_2[0]:
-            if self.pos_1[1] < self.pos_2[1]:
-                self.pos_type = 2
-                p01 = (self.pos_1[0], self.pos_1[1] + l)
-                p02 = (self.pos_2[0], self.pos_2[1] - l)
-                self.display_pos.append((p01[0] + a, p01[1]))
-                self.display_pos.append((p01[0] - a, p01[1]))
-                self.display_pos.append((p02[0] - a, p02[1]))
-                self.display_pos.append((p02[0] + a, p02[1]))
+        if len(self.display_pos) < 4:
+            if self.pos_1[0] < self.pos_2[0] and self.pos_1[1] > self.pos_2[1]:
+                self.pos_type = 0
+                p01 = (self.pos_1[0] + l*sqrt(3)/2, self.pos_1[1] - l/2)
+                p02 = (self.pos_2[0] - l*sqrt(3)/2, self.pos_2[1] + l/2)
+                self.display_pos.append((p01[0] - a/2, p01[1] - a*sqrt(3)/2))
+                self.display_pos.append((p01[0] + a/2, p01[1] + a*sqrt(3)/2))
+                self.display_pos.append((p02[0] + a / 2, p02[1] + a * sqrt(3) / 2))
+                self.display_pos.append((p02[0] - a / 2, p02[1] - a * sqrt(3) / 2))
                 pygame.draw.polygon(screen, c, (self.display_pos[0], self.display_pos[1], self.display_pos[2], self.display_pos[3]))
-        # if self.corners == (8, 9) or self.corners == (9, 8):
-        #     print(self.corners, self.pos_type)
+
+            # pos_1
+            #   \\
+            #     \\
+            #       \\
+            #         \\
+            #           pos_2
+            elif self.pos_1[0] < self.pos_2[0] and self.pos_1[1] < self.pos_2[1]:
+                self.pos_type = 1
+                p01 = (self.pos_1[0] + l*sqrt(3)/2, self.pos_1[1] + l/2)
+                p02 = (self.pos_2[0] - l*sqrt(3)/2, self.pos_2[1] - l/2)
+                self.display_pos.append((p01[0] + a/2, p01[1] - a*sqrt(3)/2))
+                self.display_pos.append((p01[0] - a/2, p01[1] + a*sqrt(3)/2))
+                self.display_pos.append((p02[0] - a / 2, p02[1] + a * sqrt(3) / 2))
+                self.display_pos.append((p02[0] + a / 2, p02[1] - a * sqrt(3) / 2))
+                pygame.draw.polygon(screen, c, (self.display_pos[0], self.display_pos[1], self.display_pos[2], self.display_pos[3]))
+
+            #      pos_1
+            #       ||
+            #       ||
+            #       ||
+            #       ||
+            #      pos_2
+            elif self.pos_1[0] == self.pos_2[0]:
+                if self.pos_1[1] < self.pos_2[1]:
+                    self.pos_type = 2
+                    p01 = (self.pos_1[0], self.pos_1[1] + l)
+                    p02 = (self.pos_2[0], self.pos_2[1] - l)
+                    self.display_pos.append((p01[0] + a, p01[1]))
+                    self.display_pos.append((p01[0] - a, p01[1]))
+                    self.display_pos.append((p02[0] - a, p02[1]))
+                    self.display_pos.append((p02[0] + a, p02[1]))
+        pygame.draw.polygon(screen, c, (self.display_pos[0], self.display_pos[1], self.display_pos[2], self.display_pos[3]))
 
     def is_inside(self, pos):
-        # if self.corners == (8, 9) or self.corners == (9, 8):
-            # print(self.corners, self.pos_type)
         if self.pos_type == 0:
             if self.display_pos[0][0] <= pos[0] <= self.display_pos[3][0] and self.display_pos[3][1] <= pos[1] <= self.display_pos[1][1]:
-                # print(f"clicked on {self.corners}")
                 return True
         elif self.pos_type == 1:
-            # print(self.corners, self.pos_1, self.pos_2)
             if self.display_pos[1][0] <= pos[0] <= self.display_pos[3][0] and self.display_pos[0][1] <= pos[1] <= self.display_pos[3][1]:
-                # print(f"clicked on {self.corners}")
                 return True
         elif self.pos_type == 2:
             if self.display_pos[1][0] <= pos[0] <= self.display_pos[0][0] and self.display_pos[0][1] <= pos[1] <= self.display_pos[2][1]:
-                # print(f"clicked on {self.corners}")
                 return True
         return False
 
