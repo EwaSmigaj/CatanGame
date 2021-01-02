@@ -18,7 +18,8 @@ image_name = {
     3: "YELLOW"
 }
 
-class Corner:
+
+class Vertex:
     def __init__(self, numb, pos_x=0, pos_y=0, c=-1, corner_size=30):
         self.numb = numb
         self.color = c
@@ -27,7 +28,7 @@ class Corner:
         self.available = True
         self.pos_x = pos_x
         self.pos_y = pos_y
-        self.corner_size = 30
+        self.vertex_size = 30
         self.clicked = False
 
     def display(self, screen):
@@ -40,24 +41,24 @@ class Corner:
         if self.building == 0:
             filename = "Graphic//corner_empty" + clicked + ".png"
             img = pygame.image.load(filename)
-            img = pygame.transform.scale(img, (self.corner_size, self.corner_size))
-            screen.blit(img, (self.pos_x - int(self.corner_size/2), self.pos_y - int(self.corner_size/2)))
+            img = pygame.transform.scale(img, (self.vertex_size, self.vertex_size))
+            screen.blit(img, (self.pos_x - int(self.vertex_size / 2), self.pos_y - int(self.vertex_size / 2)))
 
         elif self.building == 1:
             filename = "Graphic//village_" + image_name[self.color] + clicked + ".png"
             img = pygame.image.load(filename)
-            img = pygame.transform.scale(img, (self.corner_size, self.corner_size))
-            screen.blit(img, (self.pos_x - int(self.corner_size/2), self.pos_y - int(self.corner_size/2)))
+            img = pygame.transform.scale(img, (self.vertex_size, self.vertex_size))
+            screen.blit(img, (self.pos_x - int(self.vertex_size / 2), self.pos_y - int(self.vertex_size / 2)))
 
         elif self.building == 2:
             filename = "Graphic//town_" + image_name[self.color] + ".png"
             img = pygame.image.load(filename)
-            img = pygame.transform.scale(img, (self.corner_size, self.corner_size))
-            screen.blit(img, (self.pos_x - int(self.corner_size/2), self.pos_y - int(self.corner_size/2)))
+            img = pygame.transform.scale(img, (self.vertex_size, self.vertex_size))
+            screen.blit(img, (self.pos_x - int(self.vertex_size / 2), self.pos_y - int(self.vertex_size / 2)))
 
     def is_inside(self, pos):
         dist = sqrt((self.pos_x - pos[0])**2 + (self.pos_y - pos[1])**2)
-        if dist < self.corner_size/2:
+        if dist < self.vertex_size/2:
             return True
         else:
             return False

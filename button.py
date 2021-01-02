@@ -1,5 +1,5 @@
 import pygame
-from corner import Corner
+from vertex import Vertex
 from edge import Edge
 
 

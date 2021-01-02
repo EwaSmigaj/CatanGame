@@ -12,7 +12,6 @@ from montecarlo import Montecarlo
 
 class Game:
     def __init__(self, numb_of_players, ai):
-        self.players = []
         self.numb_of_players = numb_of_players
         self.board = Board(self.numb_of_players, ai)
         self.surface = Surface(self.board)
@@ -54,7 +53,6 @@ class Game:
     def check_action_button_clicked(self, pos, init=False):
         if self.surface.option_button.is_inside(pos) is True:
             self.surface.option_button.click()
-            # self.clicked = self.board.option_button
             self.option_button_action(self.surface.option_button.destination, init)
             return True
         return False
@@ -85,10 +83,13 @@ class Game:
         self.unclick()
 
     def check_end_button_clicked(self, pos, init=False):
+        print(init)
         mv = self.board.moves_in_current_turn
+        print(f"mv = {mv}")
         if self.surface.end_button.is_inside(pos) is True:
             if init is False or (init is True and len(mv["village"]) == 1 and len(mv["road"]) == 1):
                 self.action.next_turn = True
+                print("EEEEE")
                 return True
             if init is True and (len(mv["village"]) < 1 or len(mv["road"]) < 1):
                 self.board.message = "You have to build 1 road and 1 village to end this ture"
@@ -107,8 +108,8 @@ class Game:
             ret = dest[self.surface.option_button.destination]()
         elif destination == "road":
             if init is False or (init is True and len(self.board.moves_in_current_turn["road"]) < 1):
-                ret = dest[destination](self.clicked.corners, init)
-                pos = self.clicked.corners
+                ret = dest[destination](self.clicked.vertices, init)
+                pos = self.clicked.vertices
         else:
             if init is False or (init is True and len(self.board.moves_in_current_turn[destination]) < 1):
                 ret = dest[destination](self.clicked.numb, init)
@@ -116,10 +117,10 @@ class Game:
 
         if ret is None and init is True:
             self.board.message = "You can build only one village and one road on the init phase"
-        elif ret is not True and ret not in self.action.development_cards:
+        elif ret is not True and ret not in self.board.development_cards:
             self.board.message = ret
-        else:
-            self.board.moves_in_current_turn[destination].append(ret)
+        # else:
+            # self.board.moves_in_current_turn[destination].append(ret)
         self.unclick(init)
 
     def unclick(self, init=False):
@@ -131,15 +132,6 @@ class Game:
         else:
             self.surface.option_button.change_dest("development card")
 
-    # def init_phase(self):
-    #     turns = 0
-    #     while turns < len(self.board.players)*2:
-    #         self.init_turn()
-    #         self.board.init_next_player()
-    #         turns += 1
-    #     self.board.init_distribute_resources()
-    #     self.board.init = False
-
     def undo(self):
         pass
 
@@ -149,6 +141,7 @@ class Game:
             if self.check_action_button_clicked(pos, init) is False:
                 if self.check_end_button_clicked(pos, init) is False:
                     if self.check_corner_clicked(pos, init) is False:
+                        print("faalse")
                         if self.check_edge_clicked(pos, init) is False:
                             if self.check_change_button_clicked(pos, init) is False:
                                 self.unclick(init)
@@ -183,9 +176,12 @@ class Game:
                 if event.type == pygame.QUIT:
                     sys.exit(0)
                 if self.board.current_player.ai is False:
-                    self.click_handler(event)
+                    # print("clc")
+                    self.click_handler(event, self.board.init)
             if self.board.current_player.ai is True:
                 self.action.ai_move(self.ai.get_play())
+                if self.board.is_end() is not False:
+                    self.action.next_turn = True
         self.action.next_turn = False
 
     def run(self):
@@ -206,7 +202,7 @@ class Game:
                     sys.exit(0)
 
     def copy(self):
-        copyobj = Game(self.numb_of_players)
+        copyobj = Game(self.numb_of_players, self.ai)
         for name, attr in self.__dict__.items():
             if hasattr(attr, 'copy') and callable(getattr(attr, 'copy')):
                 copyobj.__dict__[name] = attr.copy()
@@ -215,6 +211,6 @@ class Game:
         return copyobj
 
 
-g = Game(2, True)
+g = Game(2, False)
 g.run()
 

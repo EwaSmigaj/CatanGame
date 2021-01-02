@@ -6,6 +6,7 @@ product_name = {
 4: "hay"
 }
 
+
 class Player:
     def __init__(self, color, ai=False):
         self.color = color
@@ -15,10 +16,7 @@ class Player:
         self.built = {"village": 0, "town": 0, "road": 0}
         self.products = {"wood": 0, "clay": 0, "sheep": 0, "hay": 0, "rock": 0}
         self.possible_trades = {"wood": 3, "clay": 3, "sheep": 3, "hay": 3, "rock": 3}
-        self.longest_road = 0
-        self.largest_army = 0
         self.development_cards = {"knight": 0, "victory_point": 0}
-        self.las_gain = {"wood": 0, "clay": 0, "sheep": 0, "hay": 0, "rock": 0}
 
     @property
     def score(self):
@@ -26,8 +24,6 @@ class Player:
         score += self.built["village"]
         score += self.built["town"] * 2
         score += self.development_cards["victory_point"]
-        score += self.longest_road * 2
-        score += self.largest_army * 2
         return score
 
     @property

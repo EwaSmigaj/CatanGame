@@ -1,5 +1,5 @@
 from field import *
-from corner import *
+from vertex import *
 from edge import *
 from button import *
 import random
@@ -19,7 +19,7 @@ dev_cards_names = ["knight", "victory_point"]
 numbs = [6, 5, 9, 4, 3, 8, 10, 6, 5, 9, 12, 3, 2, 10, 11, 11, 4, 8]
 fields = [9, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4]
 random.shuffle(fields)
-corners_fields = {
+vertices_fields = {
            0: [0, 1, 2, 10, 9, 8],
            1: [2, 3, 4, 12, 11, 10],
            2: [4, 5, 6, 14, 13, 12],
@@ -40,7 +40,7 @@ corners_fields = {
            17: [41, 42, 43, 51, 50, 49],
            18: [43, 44, 45, 53, 52, 51]
             }
-corners_corners = {
+vert_vert = {
             0: [1, 8],
             1: [0, 2],
             2: [1, 3, 10],
@@ -96,7 +96,7 @@ corners_corners = {
             52: [51, 53],
             53: [52, 45]
         }
-corners_ports = {
+vertices_ports = {
     (1, 0): "wood",
     (3, 4): "sheep",
     (14, 15): "rock",
@@ -107,7 +107,7 @@ corners_ports = {
     (28, 38): "hay",
     (7, 17): "rock",
                  }
-corners_pos = []
+vertices_pos = []
 spots = 54
 
 '''
@@ -129,7 +129,7 @@ self._corners_corners_map - dict with assigned corners neighbours
 
 
 class Board:
-    def __init__(self, players_am, ai, screen_w=1200, screen_h=720, corners_ports=corners_ports, fields_map=corners_fields, corners_map=corners_corners, spots=spots):
+    def __init__(self, players_am, ai, screen_w=1200, screen_h=720, vertices_ports=vertices_ports, fields_map=vertices_fields, vertices_map=vert_vert, spots=spots):
         self.screen_w = screen_w
         self.screen_h = screen_h
         self.ai = ai
@@ -138,25 +138,26 @@ class Board:
         self.dice = [0, 0]
         self.spots = spots
         self.fields = []
-        self.corners = []
+        self.vertices = []
         self.edges = {}
         self.players = []
         self.init = True
         self.buildings_spots = {}
-        self.fields_corners_map = fields_map
-        self.corners_corners_map = corners_map
-        self.corners_ports = corners_ports
+        self.fields_vertices_map = fields_map
+        self.vert_vert_map = vertices_map
+        self.vertices_ports = vertices_ports
         self.message = "what do you want to do?"
         self.edge_length = (5 / 6 * self.screen_h) / 10
         self.main_panel_x = self.pos_start_x + 12 * self.edge_length * sqrt(3) / 2
         # self.trade_buttons = OptionButton((self.screen_w - 400, self.screen_h - 250), 100, 40, "trade", "trade")
         self.init_players(players_am)
         self.init_fields()
-        self.init_corners()
+        self.init_vertices()
         self.init_edges()
         self.history = []
         self.current_player = self.players[0]
         self.moves_in_current_turn = {"village": [], "town": [], "road": [], "development card": []}
+        self.development_cards = {"knight": 20, "victory_point": 5}
         self.last_move = 0
         self.history = []
 
@@ -173,7 +174,7 @@ class Board:
         for player in self.players:
             for village in self.buildings_spots[player.color]["village"]:
                 for field in self.fields:
-                    if village in self.fields_corners_map[field.tag]:
+                    if village in self.fields_vertices_map[field.tag]:
                         player.gain(field.type, 1)
 
     def change_current_player(self, current_player):
@@ -189,11 +190,11 @@ class Board:
         for player in self.players:
             for village_numb in self.buildings_spots[player.color]["village"]:
                 for field in fields_to_distribute:
-                    if village_numb in self.fields_corners_map[field.tag]:
+                    if village_numb in self.fields_vertices_map[field.tag]:
                         player.gain(field.type, 1)
             for town_numb in self.buildings_spots[player.color]["town"]:
                 for field in fields_to_distribute:
-                    if town_numb in self.fields_corners_map[field.tag]:
+                    if town_numb in self.fields_vertices_map[field.tag]:
                         player.gain(field.type, 2)
 
     def take_away_products(self):
@@ -220,7 +221,7 @@ class Board:
             built_roads = [p.built["road"] for p in self.players]
             if set(built_roads) == {2}:
                 self.init = False
-                self.board.init_distribute_resources()
+                self.init_distribute_resources()
                 self.current_player = self.players[0]
             elif self.current_player.color == self.players[-1].color and self.current_player.built["road"] == 1:
                 self.current_player = self.players[-1]
@@ -255,66 +256,66 @@ class Board:
                 numbs.insert(i, -1)
                 self.fields.append(Field(i, fields[i], 0))
 
-    def init_corners(self):
+    def init_vertices(self):
         for i in range(self.spots):
             if i % 2 == 0:
                 if i < 7:
                     pos_x = int(self.pos_start_x + i*self.edge_length*sqrt(3)/2 + 2*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + self.edge_length/2)
-                    self.corners.append(Corner(i, pos_x, pos_y, 1))
+                    self.vertices.append(Vertex(i, pos_x, pos_y, 1))
                 elif 7 < i < 16:
                     pos_x = int(self.pos_start_x + (i-8)*self.edge_length*sqrt(3)/2 + 2*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + self.edge_length + self.edge_length/2)
-                    self.corners.append(Corner(i, pos_x, pos_y, 1))
+                    self.vertices.append(Vertex(i, pos_x, pos_y, 1))
                 elif 16 <= i <= 26:
                     pos_x = int(self.pos_start_x + (i-16)*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + self.edge_length * 3 + self.edge_length/2)
-                    self.corners.append(Corner(i, pos_x, pos_y, 1))
+                    self.vertices.append(Vertex(i, pos_x, pos_y, 1))
                 elif 28 <= i <= 36:
                     pos_x = int(self.pos_start_x + (i-27)*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + self.edge_length * 5)
-                    self.corners.append(Corner(i, pos_x, pos_y, 1))
+                    self.vertices.append(Vertex(i, pos_x, pos_y, 1))
                 elif 38 <= i <= 46:
                     pos_x = int(self.pos_start_x + (i-37)*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + self.edge_length * 6)
-                    self.corners.append(Corner(i, pos_x, pos_y, 1))
+                    self.vertices.append(Vertex(i, pos_x, pos_y, 1))
                 elif 48 <= i <= 54:
                     pos_x = int(self.pos_start_x + (i-45)*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + self.edge_length * 8)
-                    self.corners.append(Corner(i, pos_x, pos_y, 1))
+                    self.vertices.append(Vertex(i, pos_x, pos_y, 1))
             else:
                 if i < 7:
                     pos_x = int(self.pos_start_x + i*self.edge_length*sqrt(3)/2 + 2*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y)
-                    self.corners.append(Corner(i, pos_x, pos_y))
+                    self.vertices.append(Vertex(i, pos_x, pos_y))
                 elif 7 <= i <= 15:
                     pos_x = int(self.pos_start_x + (i-6)*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + 2 * self.edge_length)
-                    self.corners.append(Corner(i, pos_x, pos_y))
+                    self.vertices.append(Vertex(i, pos_x, pos_y))
                 elif 16 < i < 26:
                     pos_x = int(self.pos_start_x + (i-16)*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + 3 * self.edge_length)
-                    self.corners.append(Corner(i, pos_x, pos_y))
+                    self.vertices.append(Vertex(i, pos_x, pos_y))
                 elif 27 <= i <= 37:
                     pos_x = int(self.pos_start_x + (i-27)*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + 4 * self.edge_length + self.edge_length/2)
-                    self.corners.append(Corner(i, pos_x, pos_y,))
+                    self.vertices.append(Vertex(i, pos_x, pos_y, ))
                 elif 38 < i < 46:
                     pos_x = int(self.pos_start_x + (i-37)*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + 6.5 * self.edge_length)
-                    self.corners.append(Corner(i, pos_x, pos_y))
+                    self.vertices.append(Vertex(i, pos_x, pos_y))
                 elif 46 < i < 54:
                     pos_x = int(self.pos_start_x + (i-45)*self.edge_length*sqrt(3)/2)
                     pos_y = int(self.pos_start_y + 7.5 * self.edge_length)
-                    self.corners.append(Corner(i, pos_x, pos_y))
+                    self.vertices.append(Vertex(i, pos_x, pos_y))
 
     def init_edges(self):
         for i in range(self.spots):
-            for corner in self.corners_corners_map[i]:
-                if self.check_if_edge_already_exist(i, corner) is False:
-                    pos_1 = (self.corners[i].pos_x, self.corners[i].pos_y)
-                    pos_2 = (self.corners[corner].pos_x, self.corners[corner].pos_y)
-                    self.edges[(i, corner)] = (Edge(i, corner, pos_1, pos_2))
+            for vertex in self.vert_vert_map[i]:
+                if self.check_if_edge_already_exist(i, vertex) is False:
+                    pos_1 = (self.vertices[i].pos_x, self.vertices[i].pos_y)
+                    pos_2 = (self.vertices[vertex].pos_x, self.vertices[vertex].pos_y)
+                    self.edges[(i, vertex)] = (Edge(i, vertex, pos_1, pos_2))
 
     def check_if_edge_already_exist(self, start, end):
         for edge in self.edges:
@@ -322,12 +323,12 @@ class Board:
                 return True
         return False
 
-    def find_corners_by_numb(self, numb):
+    def find_vertices_by_numb(self, numb):
         field_tags = [n for n in self.fields if self.fields[n].number is numb]
-        corners = 0
+        vertices = 0
         for field in field_tags:
-            corners += self.fields_corners_map[field]
-        return corners
+            vertices += self.fields_vertices_map[field]
+        return vertices
 
     def set_message(self, msg):
         self.message = msg
@@ -336,7 +337,7 @@ class Board:
         players_score = {}
         for player in self.players:
             players_score[player.color] = player.score
-            if player.score >= 7:
+            if player.score >= 6:
                 return player.color
         return False
 
@@ -346,7 +347,7 @@ class Board:
         else:
             last = self.last_move[0]
             if last == "road":
-                last = self.last_move[1].corners
+                last = self.last_move[1].vertices
             elif last == "town" or last == "village":
                 last = self.last_move[1].numb
             elif last == "change":

@@ -8,7 +8,6 @@ class CatanMoves:
                       "village": {"wood": 1, "clay": 1, "hay": 1, "sheep": 1},
                       "town": {"rock": 3, "hay": 2},
                       "development card": {"rock": 1, "hay": 1, "sheep": 1}}
-        self.development_cards = {"knight": 20, "victory_point": 5}
         self.init = True
         self.next_turn = False
 
@@ -19,7 +18,7 @@ class CatanMoves:
         av_act = {"corner": [], "edge": []}
         buildings_spots = self.board.buildings_spots[self.board.current_player.color]
         # check corners
-        for corner in self.board.corners:
+        for corner in self.board.vertices:
             if corner.empty is True and corner.available is True:
                 road_connection = [x for x in buildings_spots["road"] if corner.numb in x]
                 if len(road_connection) > 0:
@@ -35,7 +34,7 @@ class CatanMoves:
             elif edge[1] in buildings_spots["town"] or edge[1] in buildings_spots["village"]:
                 e = edge[1]
             if e != -1:
-                for corner in self.board.corners_corners_map[e]:
+                for corner in self.board.vert_vert_map[e]:
                     if self.select_edge(e, corner).available is True:
                         if self.select_edge(e, corner) not in av_act["edge"]:
                             av_act["edge"].append(self.select_edge(e, corner))
@@ -43,10 +42,11 @@ class CatanMoves:
         # check edges near road
         for road in buildings_spots["road"]:
             for road_c in road:
-                for corner in self.board.corners_corners_map[road_c]:
+                for corner in self.board.vert_vert_map[road_c]:
                     edge = self.select_edge(corner, road_c)
                     if edge.available is True and edge not in av_act["edge"]:
                         av_act["edge"].append(edge)
+        print("not init")
         return av_act
 
     def legal_plays(self):
@@ -60,26 +60,29 @@ class CatanMoves:
 
             elif player.built["village"] == 0 or (player.built["village"] == player.built["road"] and
             self.board.moves_in_current_turn == {"village": [], "town": [], "road": [], "development card": []}):
-                for corner in self.board.corners:
-                    if corner.empty is True and corner.available is True:
-                        actions.append((player.color, ("village", corner.numb)))
+                for i in range(4):
+                    actions.append((player.color, ("village", 4*i + 1 + self.board.current_player.color*3)))
+            #     for corner in self.board.corners:
+            #         if corner.empty is True and corner.available is True:
+            #             actions.append((player.color, ("village", corner.numb)))
 
-            else:
+            elif self.board.last_move[0] == "village":
                 for edge in self.board.edges:
                     e = -1
-                    if edge[0] in buildings_spots["village"]:
+
+                    if buildings_spots["village"][-1] == edge[0]:
                         e = edge[0]
-                    elif edge[1] in buildings_spots["village"]:
+                    elif buildings_spots["village"][-1] == edge[1]:
                         e = edge[1]
                     if e != -1:
-                        for corner in self.board.corners_corners_map[e]:
+                        for corner in self.board.vert_vert_map[e]:
                             if self.select_edge(e, corner).available is True:
-                                if (player.color, ("road", self.select_edge(e, corner).corners)) not in actions:
-                                    actions.append((player.color, ("road", self.select_edge(e, corner).corners)))
+                                if (player.color, ("road", self.select_edge(e, corner).vertices)) not in actions:
+                                    actions.append((player.color, ("road", self.select_edge(e, corner).vertices)))
             return actions
 
         if player.can_afford(self.costs["village"]) or player.can_afford(self.costs["town"]):
-            for corner in self.board.corners:
+            for corner in self.board.vertices:
                 if corner.empty is True and corner.available is True:
                     road_connection = [x for x in buildings_spots["road"] if corner.numb in x]
                     if len(road_connection) > 0 and player.can_afford(self.costs["village"]):
@@ -96,18 +99,18 @@ class CatanMoves:
                 elif edge[1] in buildings_spots["town"] or edge[1] in buildings_spots["village"]:
                     e = edge[1]
                 if e != -1:
-                    for corner in self.board.corners_corners_map[e]:
+                    for corner in self.board.vert_vert_map[e]:
                         if self.select_edge(e, corner).available is True:
-                            if ((self.board.current_player.color, ("road", self.select_edge(e, corner).corners))) not in actions:
-                                actions.append((self.board.current_player.color, ("road", self.select_edge(e, corner).corners)))
+                            if ((self.board.current_player.color, ("road", self.select_edge(e, corner).vertices))) not in actions:
+                                actions.append((self.board.current_player.color, ("road", self.select_edge(e, corner).vertices)))
 
         # check edges near road
             for road in buildings_spots["road"]:
                 for road_c in road:
-                    for corner in self.board.corners_corners_map[road_c]:
+                    for corner in self.board.vert_vert_map[road_c]:
                         edge = self.select_edge(corner, road_c)
-                        if edge.available is True and ((self.board.current_player.color, ("road", edge.corners))) not in actions:
-                            actions.append((self.board.current_player.color, ("road", edge.corners)))
+                        if edge.available is True and ((self.board.current_player.color, ("road", edge.vertices))) not in actions:
+                            actions.append((self.board.current_player.color, ("road", edge.vertices)))
 
     # chceck if player can change something
         for product in player.products:
@@ -116,7 +119,7 @@ class CatanMoves:
                     if prod != product:
                         actions.append((self.board.current_player.color, ("change", (product, prod))))
 
-        if player.can_afford(self.costs["development card"]):
+        if player.can_afford(self.costs["development card"]) and self.board.dev_card_sum > 0:
             actions.append((self.board.current_player.color, ("development card", 0)))
 
         actions.append((self.board.current_player.color, ("end", 0)))
@@ -135,7 +138,7 @@ class CatanMoves:
             "change": self.board.current_player.change,
         }
 
-        if move[1][1] == 0:
+        if move[1][1] == 0 and move[1][0] != "village" and move[1][0] != "town":
             if move[1][0] == "end":
                 self.board.history.append(move)
 
@@ -150,8 +153,6 @@ class CatanMoves:
                 self.board.history.append(move)
         else:
             translate_move[move[1][0]](move[1][1])
-
-
 
     def ai_next_turn(self, simulation=True):
         if simulation is True:
@@ -170,7 +171,7 @@ class CatanMoves:
     def init_return_available_board_actions(self):
         av_act = {"corner": [], "edge": []}
         buildings_spots = self.board.buildings_spots[self.board.current_player.color]
-        for corner in self.board.corners:
+        for corner in self.board.vertices:
             if corner.empty is True and corner.available is True:
                 av_act["corner"].append(corner)
         for edge in self.board.edges:
@@ -180,11 +181,11 @@ class CatanMoves:
             elif edge[1] in buildings_spots["town"] or edge[1] in buildings_spots["village"]:
                 e = edge[1]
             if e != -1:
-                for corner in self.board.corners_corners_map[e]:
+                for corner in self.board.vert_vert_map[e]:
                     if self.select_edge(e, corner).available is True:
                         if self.select_edge(e, corner) not in av_act["edge"]:
                             av_act["edge"].append(self.select_edge(e, corner))
-
+        print("init")
         return av_act
 
     def select_edge(self, val1, val2):
@@ -193,9 +194,9 @@ class CatanMoves:
         return self.board.edges[y[0]]
 
     def update_board_availability(self, corner_numb):
-        corners_to_block = self.board.corners_corners_map[corner_numb]
+        corners_to_block = self.board.vert_vert_map[corner_numb]
         for corner_numb in corners_to_block:
-            self.board.corners[corner_numb].available = 0
+            self.board.vertices[corner_numb].available = 0
 
     def build_road(self, position, free=False):
         building_type = "road"
@@ -209,10 +210,10 @@ class CatanMoves:
         position.color = self.board.current_player.color
         self.board.current_player.built[building_type] += 1
         self.board.current_player.available_buildings[building_type] -= 1
-        self.board.buildings_spots[self.board.current_player.color][building_type].append(position.corners)
+        self.board.buildings_spots[self.board.current_player.color][building_type].append(position.vertices)
         self.board.last_move = ("road", position)
-        self.board.history.append((self.board.current_player.color, ("road", position.corners)))
-        self.board.moves_in_current_turn["road"].append(position.corners)
+        self.board.history.append((self.board.current_player.color, ("road", position.vertices)))
+        self.board.moves_in_current_turn["road"].append(position.vertices)
         return True
 
     def build_village(self, position, free=False):
@@ -222,7 +223,7 @@ class CatanMoves:
         if self.board.init is False:
             if self.board.current_player.remove_resources(self.costs[building_type]) is False:
                 return "You don't have enough resources"
-        position = self.board.corners[position]
+        position = self.board.vertices[position]
         position.available = False
         position.empty = False
         position.building = 1
@@ -235,6 +236,7 @@ class CatanMoves:
         self.board.last_move = ("village", position)
         self.board.history.append((self.board.current_player.color, ("village", position.numb)))
         self.board.moves_in_current_turn["village"].append(position.numb)
+        print(f"append = {position.numb}")
         return True
 
     def build_town(self, position, free=False):
@@ -243,7 +245,7 @@ class CatanMoves:
             return "You don't have any town to build"
         if self.board.current_player.remove_resources(self.costs[building_type]) is False:
             return "You don't have enough resources"
-        position = self.board.corners[position]
+        position = self.board.vertices[position]
         position.building = 2
         self.board.current_player.built[building_type] += 1
         self.board.current_player.built["village"] -= 1
@@ -261,13 +263,14 @@ class CatanMoves:
         if self.board.current_player.remove_resources(self.costs["development card"]) is False:
             return "You don't have enough resources"
         all_cards = []
-        for dev_card_type in self.development_cards:
-            for _ in range(self.development_cards[dev_card_type]):
+        for dev_card_type in self.board.development_cards:
+            for _ in range(self.board.development_cards[dev_card_type]):
                 all_cards.append(dev_card_type)
-        if all_cards == 0:
-            return "There's no resource card in bank"
+        if len(all_cards) == 0:
+            return "There's no development_card card in bank"
         random.shuffle(all_cards)
         self.board.current_player.development_cards[all_cards[0]] += 1
+        self.board.development_cards[all_cards[0]] -= 1
         self.board.last_move = ("development card", 0)
         self.board.history.append((self.board.current_player.color, ("development card", 0)))
         return all_cards[0]
@@ -279,8 +282,8 @@ class CatanMoves:
         pass
 
     def actualize_trades(self, position):
-        for port_pos in self.board.corners_ports:
+        for port_pos in self.board.vertices_ports:
             if position.numb in port_pos:
-                product = self.board.corners_ports[port_pos]
+                product = self.board.vertices_ports[port_pos]
                 self.board.current_player.possible_trades[product] = 2
 

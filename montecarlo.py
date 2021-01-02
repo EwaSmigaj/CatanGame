@@ -6,7 +6,7 @@ from copy import deepcopy
 from operator import itemgetter
 
 class Montecarlo:
-    def __init__(self, board, action, time=30, max_moves=35):
+    def __init__(self, board, action, time=10, max_moves=5):
         self.board = board
         self.action = deepcopy(action)
         self.calculation_time = datetime.timedelta(seconds=time)
@@ -15,11 +15,13 @@ class Montecarlo:
         self.wins = {}
         self.points = {}
         self.states = []
+        self.C = 1.4
 
     def update(self, state):
         self.states.append(state)
 
     def get_play(self):
+        self.states = []
         print("******************************************************")
         print("******************************************************")
         print("GET PLAY")
@@ -35,14 +37,23 @@ class Montecarlo:
             return (0, ('end', 0))
         self.action.change_board(state)
         legal = self.action.legal_plays()
-        print(legal)
+
         if len(legal) == 1:
             return legal[0]
+
         games = 0
+        max_time = datetime.timedelta(seconds=len(legal)*5)
+
+        if max_time > self.calculation_time:
+            max_time = self.calculation_time
+
         begin = datetime.datetime.utcnow()
-        while datetime.datetime.utcnow() - begin < self.calculation_time:
+        while datetime.datetime.utcnow() - begin < max_time:
             self.run_simulation()
             games += 1
+            if games == 55:
+                h=0
+            print(f"games = {games}")
 
         moves_states = [tuple(self.next_state(state, p).history) for p in legal]
         print(f"moves_states = {moves_states}")
@@ -52,7 +63,7 @@ class Montecarlo:
         p1inms = 0
 
         for p, w in zip(self.plays, self.wins):
-            y= p
+            y = p
             if p[1] in moves_states:
                 p1inms +=1
                 # print("p1 in ms")
@@ -60,18 +71,22 @@ class Montecarlo:
                     pw = self.wins[w]/self.plays[p]
                     best = p[1][-1]
 
+        print(f"best by wins = {best}")
 
         max_points = 0
         points = []
         if pw == 0:
             # print(f"self.points = {self.points}")
             for p in self.points:
-                # print(p[1].last_move)
+                # print(f"p[1] = {p[1]}")
+                # print(f"moves_states = {moves_states}")
                 if p[1] in moves_states:
                     points.append(self.points[p])
                     if self.points[p]/self.plays[p] > max_points:
                         max_points = self.points[p]
                         best = p[1][-1]
+                # else:
+                    # print(f"p[1] ({p[1]}) not in moves_states")
 
             print(f"now best = {best} (points), max points = {max_points}")
             print(f"points = {points}")
@@ -95,12 +110,10 @@ class Montecarlo:
 
     def run_simulation(self):
         visited_states = []
-        states_copy = self.states[:]
-        if len(states_copy) == 0:
-            state = self.board
-        else:
-            state = states_copy[-1]
+        state = self.board
         player = state.current_player
+        if player.color == 1:
+            o =11
         player_we_want_to_win = state.current_player
         points_at_end = state.players[player_we_want_to_win.color].score
         expand = True
@@ -108,26 +121,51 @@ class Montecarlo:
         for t in range(self.max_moves):
             self.action.change_board(state)
             legal = self.action.legal_plays()
+            print(f"legal = {legal}")
+            moves_states = [tuple(self.next_state(state, p).history) for p in legal]
+            plays_states = [p[1] for p in self.plays.keys()]
 
+            play_chosen = False
 
-            play = choice(legal)
-            # if t == 0:
-            print("____________")
-            print(f"t = {t}")
-            print(f"play={play}")
+            for i, p in enumerate(moves_states):
+                if p not in plays_states:
+                    play = legal[i]
+                    play_chosen = True
+                    break
+
+            if play_chosen is False:
+            # if we've checked every possible move
+                print("we've checked every possible move")
+                print(f"moves states = {moves_states}")
+                b = sum(self.plays[(player.color, S)] for S in moves_states)
+                print(f"sum = {b}")
+                if b == 54:
+                    o = 0
+                c = log(b)
+                print(f"log sum = {c}")
+                log_total = log(b)
+                stats = [((self.wins[(player.color, S)] / self.plays[player.color, S]) +
+                     self.C * sqrt(log_total / self.plays[(player.color, S)]), S) for S in moves_states]
+
+                first_stat = stats[0][0]
+                if all(i[0] == first_stat for i in stats) is True:
+                    stats = [((self.points[(player.color, S)] / self.plays[player.color, S]) +
+                        self.C * sqrt(log_total / self.plays[(player.color, S)]), S) for S in moves_states]
+
+                if all(i[0] == first_stat for i in stats) is True:
+                    play = choice(legal)
+                else:
+                    value, play = max(stats)
+                    play = play[0]
+
             if play[1] == ('end', 0):
                 turn +=1
+
             points_now = state.players[player_we_want_to_win.color].score
-            if t == 0:
-                print(f"points_now={points_now}")
             state = self.next_state(state, play)
             points_after = state.players[player_we_want_to_win.color].score
-            if t == 0:
-                print(f"points_after={points_after}")
 
-            states_copy.append(state)
-
-            if expand and self.player_state_in_plays(player, state) is False:
+            if expand and self.player_state_in_plays(player.color, tuple(state.history)) is False:
                 expand = False
                 self.plays[(player.color, tuple(state.history))] = 0
                 self.wins[(player.color, tuple(state.history))] = 0
@@ -144,10 +182,7 @@ class Montecarlo:
             if type(winner) is int:
                 break
 
-        # print("++++++++++++++")
-        # print(f"player = {player}, state = {state}")
-        # print(visited_states)
-        # print("++++++++++++++")
+
         for player, state in visited_states:
             if self.player_state_in_plays(player_we_want_to_win.color, tuple(state.history)) is False:
                 continue
@@ -168,7 +203,6 @@ class Montecarlo:
         for p, s in self.plays:
             # print(f"p = {p}, player={player}, s = {s}, state = {state}")
             if player == p and state == s:
-                # print("same")
                 return True
         return False
 

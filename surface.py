@@ -1,6 +1,6 @@
 import pygame
 from board import Board
-from corner import *
+from vertex import *
 from optionbutton import OptionButton
 from button import Button
 
@@ -22,6 +22,7 @@ class Surface:
         self.end_button = Button((self.screen_w - 400, self.screen_h - 150), 150, 50, (124, 134, 123), "end ture",
                                  "end")
         self.change_buttons = [0, 0, 0, 0, 0]
+        self.init_change_buttons(self.board.current_player)
 
 
     def init_change_buttons(self, current_player):
@@ -32,7 +33,7 @@ class Surface:
             self.change_buttons[i] = (Button((self.main_panel_x + dist_between_buttons*i + 10, 350), button_w, 50, (145, 122, 101), text, prod))
 
     def display_corners(self):
-        for corner in self.board.corners:
+        for corner in self.board.vertices:
             corner.display(self.screen)
 
     def display_edges(self):
@@ -42,9 +43,9 @@ class Surface:
     def display_fields(self):
         for field in self.board.fields:
             p = []
-            corners = self.board.fields_corners_map[field.tag]
+            corners = self.board.fields_vertices_map[field.tag]
             for i in corners:
-                p.append((self.board.corners[i].pos_x, self.board.corners[i].pos_y))
+                p.append((self.board.vertices[i].pos_x, self.board.vertices[i].pos_y))
             field.display(self.screen, (p[0], p[1], p[2], p[3], p[4], p[5]))
 
     def display_village(self, position, color):
@@ -67,7 +68,7 @@ class Surface:
             for building_type in self.board.buildings_spots[player]:
                 for corner in self.board.buildings_spots[player][building_type]:
                     if building_type != "road":
-                        pos = (self.board.corners[corner].pos_x, self.board.corners[corner].pos_y)
+                        pos = (self.board.vertices[corner].pos_x, self.board.vertices[corner].pos_y)
                         if building_type == "village":
                             self.display_village(pos, player)
                         if building_type == "town":
@@ -100,7 +101,8 @@ class Surface:
         x_pos_start = self.main_panel_x
         pygame.draw.rect(self.screen, (209, 176, 115), (x_pos_start, 0, self.screen_w, self.screen_h-39))
         pygame.draw.line(self.screen, (138, 115, 73), (x_pos_start, 0), (x_pos_start, self.screen_h), 4)
-        if init is False:
+        if init is False and dice_1 != 0:
+
             dice1_file = "Graphic//dice_" + str(dice_1) + ".png"
             dice2_file = "Graphic//dice_" + str(dice_2) + ".png"
             dice1 = pygame.image.load(dice1_file)
@@ -146,8 +148,8 @@ class Surface:
             y += word_height  # Start on new row.
 
     def display_ports(self):
-        for ports_c in self.board.corners_ports:
-            self.display_port(ports_c, self.board.corners_ports[ports_c])
+        for ports_c in self.board.vertices_ports:
+            self.display_port(ports_c, self.board.vertices_ports[ports_c])
 
     def display_change_panel(self):
         for button in self.change_buttons:
@@ -158,8 +160,8 @@ class Surface:
             button.display(self.screen)
 
     def display_port(self, c_t, type):
-        corner1 = self.board.corners[c_t[0]]
-        corner2 = self.board.corners[c_t[1]]
+        corner1 = self.board.vertices[c_t[0]]
+        corner2 = self.board.vertices[c_t[1]]
         pos_x = corner1.pos_x
         pos_y = corner2.pos_y
         rotation = 0

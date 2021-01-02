@@ -13,7 +13,7 @@ color = {
 
 class Edge:
     def __init__(self, start, end, pos_1, pos_2, width=5):
-        self.corners = (start, end)
+        self.vertices = (start, end)
         self.pos_1 = pos_1
         self.pos_2 = pos_2
         self.display_pos = []
